@@ -77,6 +77,7 @@ get '/' do
     H.set_title "#{SiteName} - #{SiteDescription}"
     news,numitems = get_top_news
     H.page {
+        H.div("id" => "sitenews") { "#{SiteNews}" }+
         H.h2 {"Top news"}+news_list_to_html(news)
     }
 end
@@ -117,6 +118,7 @@ get '/latest/:start' do
         :link => "/latest/$"
     }
     H.page {
+        H.div("id" => "sitenews") { "#{SiteNews}" }+
         H.h2 {"Latest news"}+
         H.section(:id => "newslist") {
             list_items(paginate)
