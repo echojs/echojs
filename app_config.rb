@@ -1,10 +1,12 @@
 # General
-SiteName = "Lamer News"
-SiteUrl = "http://lamernews.com"
-SiteDescription = "Programming News"
+SiteName = "Echo JS"
+SiteUrl = "http://www.echojs.com"
+SiteDescription = "JavaScript News"
+
+SiteNews = "Site News : Follow Echo JS on Twitter, our official account is : <a href=\"https://twitter.com/echojs\">@echojs</a>"
 
 # Redis config
-RedisURL = "redis://127.0.0.1:10000"
+RedisURL = "redis://127.0.0.1:6379"
 
 # Security
 PBKDF2Iterations = 1000 # Set this to 5000 to improve security. But it is slow.
@@ -41,18 +43,18 @@ UsernameRegexp = /^[a-zA-Z][a-zA-Z0-9_\-]+$/
 # News and ranking
 NewsAgePadding = 3600*8
 TopNewsPerPage = 30
-LatestNewsPerPage = 100
+LatestNewsPerPage = 30
 NewsEditTime = 60*15
 NewsScoreLogStart = 10
 NewsScoreLogBooster = 2
 RankAgingFactor = 1.1
-PreventRepostTime = 3600*48
 NewsSubmissionBreak = 60*15
+PreventRepostTime = 3600*24*30
 SavedNewsPerPage = 10
 TopNewsAgeLimit = 3600*24*30
 
 # Footer links
-FooterTwitterLink = false
+FooterTwitterLink = "https://twitter.com/echojs"
 FooterGoogleGroupLink = false
 
 # API
@@ -61,4 +63,4 @@ APIMaxNewsCount = 32
 # Email service. Set MailRelay to false to disable this functionality
 # (this will prevent users from recovery accounts if the password gets lost).
 MailRelay = "localhost"
-MailFrom = "noreply@example.com"
+MailFrom = "robot@echojs.com"
