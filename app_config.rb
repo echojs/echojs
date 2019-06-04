@@ -26,6 +26,7 @@ KarmaIncrementInterval = 3600
 KarmaIncrementAmount = 1
 NewsDownvoteMinKarma = 30
 NewsDownvoteKarmaCost = 6
+DeletedNewsKarmaRefund = 12
 NewsUpvoteMinKarma = 1
 NewsUpvoteKarmaCost = 1
 NewsUpvoteKarmaTransfered = 1
