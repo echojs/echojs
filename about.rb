@@ -6,11 +6,11 @@ get '/about' do
             H.p {"Echo JS is a community-driven news site entirely focused on JavaScript development, HTML5, and front-end news."}+
 
             H.h3 { "Staff" }+
-            H.p { "Founder and Maintainer: " + H.a(:href => "https://www.cambus.net") {"Frederic Cambus"} }+
             H.p { "Admin: " + H.a(:href => "http://www.allanic.org") {"Fabien Allanic"} }+
             H.p { "Admin: " + H.a(:href => "https://www.tracker1.info") {"Michael J. Ryan"} }+
 
             H.h3 { "Former Staff" }+
+            H.p { "Founder: " + H.a(:href => "https://www.cambus.net") {"Frederic Cambus"} }+
             H.p { "Admin: " + H.a(:href => "http://www.echojs.com/user/sbruchmann") {"Steffen Bruchmann"} }+
 
             H.h3 { "Twitter" }+
