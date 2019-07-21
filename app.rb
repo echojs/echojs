@@ -786,6 +786,15 @@ post '/api/submit' do
             }.to_json
         end
     end
+
+    # make sure the news is not blacklisted
+    if is_blacklisted(params[:url]) or is_blacklisted(params[:text])
+        return {
+                :status => "err",
+                :error => "Invalid news."
+            }.to_json
+    end
+
     if params[:news_id].to_i == -1
         if submitted_recently
             return {
@@ -1522,6 +1531,7 @@ def insert_news(title,url,text,user_id)
     if !textpost and (id = $r.get("url:"+url))
         return id.to_i
     end
+
     # We can finally insert the news.
     ctime = Time.new.to_i
     news_id = $r.incr("news.count")
@@ -1825,6 +1835,12 @@ end
 def insert_comment(news_id,user_id,comment_id,parent_id,body)
     news = get_news_by_id(news_id)
     return false if !news
+
+    # check comment doesn't contain blacklisted URL
+    if is_blacklisted(body)
+        return false
+    end
+
     if comment_id == -1
         if parent_id.to_i != -1
             p = Comments.fetch(news_id,parent_id)
@@ -2093,3 +2109,15 @@ def list_items(o)
     aux
 end
 
+###############################################################################
+# Anti Spam tools
+###############################################################################
+def is_blacklisted(url_or_text)
+    domains = $r.smembers "blacklisted_domains"
+    domains.each{|d|
+        if url_or_text.include? d
+            return true
+        end
+    }
+    return false
+end
