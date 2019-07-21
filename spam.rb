@@ -41,6 +41,28 @@ def delete_user(username)
                 del_news(n["id"], n["user_id"], true)
             }
         end
+
+        # banning user
+        ban_user(username)
+    else
+        puts "User not found #{username}"
+    end
+end
+
+def ban_user(username)
+    user = get_user_by_username(username)
+    if user
+        rand_number = get_rand
+
+        # DEL auth:auth
+        $r.del("auth:#{user["auth"]}")
+        # HMSET user:NN salt ""
+        # HMSET user:NN password ""
+        # HMSET user:NN auth ""
+        # HMSET user:NN apisecret ""
+        $r.hmset("user:#{user["id"]}","salt","","password",rand_number,"auth","","apisecret","")
+
+        puts "Banned #{user["username"]} successfully"
     else
         puts "User not found #{username}"
     end
