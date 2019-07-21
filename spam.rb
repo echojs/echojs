@@ -25,6 +25,10 @@ Comments = RedisComments.new($r,"comment",proc{|c,level|
 # Search for a user, delete its comments and news 
 def delete_user(username)
     user = get_user_by_username(username)
+    
+    # an admin cannot delete himself
+    return 0 if user_is_admin?(user)
+
     if user
         puts "user found #{user}"
         # getting news and comments
@@ -49,7 +53,7 @@ def delete_user(username)
         nb_news = active_news.count
         puts "User has #{nb_news} news"
         if nb_news > 0
-            puts "News #{active_news}"
+            # puts "News #{active_news}"
             puts "Deleting news"
             # call del_news(news_id,user_id)
             active_news.each{|n|
@@ -67,6 +71,10 @@ end
 
 def ban_user(username)
     user = get_user_by_username(username)
+
+    # an admin cannot delete himself
+    return 0 if user_is_admin?(user)
+
     if user
         rand_number = get_rand
 
