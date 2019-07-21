@@ -612,12 +612,15 @@ end
 
 get '/admin' do
     redirect "/" if !$user || !user_is_admin?($user)
+    domains = get_blacklisted_domain_list
     H.set_title "Admin Section - #{SiteName}"
     H.page {
         H.div(:id => "adminlinks") {
             H.h2 {"Admin"}+
             H.h3 {"Site stats"}+
             generate_site_stats+
+            H.h3 {"Blacklisted domains"}+
+            H.list(domains)+
             H.h3 {"Developer tools"}+
             H.ul {
                 H.li {
@@ -2120,4 +2123,8 @@ def is_blacklisted(url_or_text)
         end
     }
     return false
+end
+
+def get_blacklisted_domain_list
+    $r.smembers "blacklisted_domains"
 end
