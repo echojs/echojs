@@ -1,7 +1,7 @@
 require_relative 'app'
 
+# init required by the methods we will call
 $r = setup_redis
-
 Comments = RedisComments.new($r,"comment",proc{|c,level|
     c.sort {|a,b|
         ascore = compute_comment_score a
