@@ -1653,10 +1653,10 @@ def edit_news(news_id,title,url,text,user_id)
 end
 
 # Mark an existing news as removed.
-def del_news(news_id,user_id, admin_tool = false)
+def del_news(news_id,user_id)
     news = get_news_by_id(news_id)
-    return false if !news or !admin_tool and news['user_id'].to_i != user_id.to_i and !user_is_admin?($user) 
-    return false if !admin_tool and !(news['ctime'].to_i > (Time.now.to_i - NewsEditTime)) and !user_is_admin?($user)
+    return false if !news or news['user_id'].to_i != user_id.to_i and !user_is_admin?($user) 
+    return false if !(news['ctime'].to_i > (Time.now.to_i - NewsEditTime)) and !user_is_admin?($user)
 
     $r.hmset("news:#{news_id}","del",1)
     $r.zrem("news.top",news_id)
