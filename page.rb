@@ -125,6 +125,8 @@ class HTMLGen
         "<!DOCTYPE html>"+
         self.html {
             H.head {
+                self.script(:src => "https://www.googletagmanager.com/gtag/js?id=UA-144247239-1", :async => true){}+
+                self.script{ "window.dataLayer = window.dataLayer || [];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());gtag('config', 'UA-144247239-1');" }+
                 self.meta(:charset => "utf-8")+
                 self.title{H.entities @title}+
                 self.meta(:content => :index, :name => :robots)+
