@@ -2224,8 +2224,8 @@ def delete_user(username)
             puts "Deleting news"
             # call del_news(news_id,user_id)
             active_news.each{|n|
-                puts "calling del_news(#{n["id"]}, #{n["user_id"]}, true)"
-                del_news(n["id"], n["user_id"], true)
+                puts "calling del_news(#{n["id"]}, #{n["user_id"]})"
+                del_news(n["id"], n["user_id"])
             }
         end
 
