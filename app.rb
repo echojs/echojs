@@ -791,7 +791,7 @@ post '/api/submit' do
     end
 
     # make sure the news is not blacklisted
-    if is_blacklisted(params[:url]) or is_blacklisted(params[:text])
+    if is_blacklisted_domain(params[:url]) or is_blacklisted_domain(params[:text])
         return {
                 :status => "err",
                 :error => "Invalid news."
@@ -1840,7 +1840,7 @@ def insert_comment(news_id,user_id,comment_id,parent_id,body)
     return false if !news
 
     # check comment doesn't contain blacklisted URL
-    if is_blacklisted(body)
+    if is_blacklisted_domain(body)
         return false
     end
 
@@ -2115,8 +2115,10 @@ end
 ###############################################################################
 # Anti Spam tools
 ###############################################################################
-def is_blacklisted(url_or_text)
-    domains = $r.smembers "blacklisted_domains"
+
+# returns true if the URL or text contains a blacklisted domain
+def is_blacklisted_domain(url_or_text)
+    domains = $r.smembers("blacklisted_domains")
     domains.each{|d|
         if url_or_text.include? d
             return true
