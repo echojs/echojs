@@ -1,6 +1,22 @@
 require_relative 'app'
 
-setup_redis
+$r = setup_redis
+
+Comments = RedisComments.new($r,"comment",proc{|c,level|
+    c.sort {|a,b|
+        ascore = compute_comment_score a
+        bscore = compute_comment_score b
+        if ascore == bscore
+            # If score is the same favor newer comments
+            b['ctime'].to_i <=> a['ctime'].to_i
+        else
+            # If score is different order by score.
+            # FIXME: do something smarter favouring newest comments
+            # but only in the short time.
+            bscore <=> ascore
+        end
+    }
+})
 
 ###############################################################################
 # Anti Spam tools
