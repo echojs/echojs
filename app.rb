@@ -612,12 +612,42 @@ end
 
 get '/admin' do
     redirect "/" if !$user || !user_is_admin?($user)
+    domains = get_blacklisted_domain_list
     H.set_title "Admin Section - #{SiteName}"
     H.page {
         H.div(:id => "adminlinks") {
             H.h2 {"Admin"}+
             H.h3 {"Site stats"}+
             generate_site_stats+
+            H.h3 {"Blacklisted domains"}+
+            H.list(domains)+H.br+
+            H.div(:id => "submitform") {
+                H.form(:name=>"f") {
+                    H.label(:for => "blacklist_new_domain") {"Add domain to blacklist"}+H.br+
+                    H.inputtext(:id => "blacklist_new_domain", :name => "blacklist_new_domain", :size => 60, :value => (""))+H.br+                    
+                    H.button(:name => "submit_blacklist", :value => "Submit")
+                }
+            }+
+            H.div(:id => "errormsg"){}+
+            H.script() {'
+                $(function() {
+                    $("input[name=submit_blacklist]").click(submitAddBlacklistedDomain);
+                });
+            '}+
+            H.h3 {"Delete and ban user accounts (Danger! No way back! Do not use unless the user has been repeatedly posting really bad spam articles!)"}+
+            H.div(:id => "submitform2") {
+                H.form(:name=>"f") {
+                    H.label(:for => "username") {"Username"}+H.br+
+                    H.inputtext(:id => "username", :name => "username", :size => 60, :value => (""))+H.br+                    
+                    H.button(:name => "submit_delete_user", :value => "Submit")
+                }
+            }+
+            H.div(:id => "errormsg2"){}+
+            H.script() {'
+                $(function() {
+                    $("input[name=submit_delete_user]").click(submitDeleteUser);
+                });
+            '}+
             H.h3 {"Developer tools"}+
             H.ul {
                 H.li {
@@ -786,6 +816,15 @@ post '/api/submit' do
             }.to_json
         end
     end
+
+    # make sure the news is not blacklisted
+    if is_blacklisted_domain(params[:url]) or is_blacklisted_domain(params[:text])
+        return {
+                :status => "err",
+                :error => "Invalid news."
+            }.to_json
+    end
+
     if params[:news_id].to_i == -1
         if submitted_recently
             return {
@@ -987,6 +1026,32 @@ get  '/api/getcomments/:news_id' do
         }
     }
     return { :status => "ok", :comments => top_comments }.to_json
+end
+
+post '/api/blacklist_new_domain' do
+    content_type 'application/json'
+    return {:status => "err", :error => "Not authenticated."}.to_json if !$user
+    if not check_api_secret
+        return {:status => "err", :error => "Wrong form secret."}.to_json
+    end
+    return {:status => "err", :error => "Not an admin."}.to_json if !user_is_admin?($user)
+    if add_to_blacklist_domain_list(params[:blacklist_new_domain])
+        return {:status => "ok", :blacklist_new_domain => params[:blacklist_new_domain]}.to_json
+    end
+    return {:status => "err", :error => "Can't add this sorry"}.to_json
+end
+
+post '/api/delete_user' do
+    content_type 'application/json'
+    return {:status => "err", :error => "Not authenticated."}.to_json if !$user
+    if not check_api_secret
+        return {:status => "err", :error => "Wrong form secret."}.to_json
+    end
+    return {:status => "err", :error => "Not an admin."}.to_json if !user_is_admin?($user)
+    if delete_user(params[:username])
+        return {:status => "ok", :username => params[:username]}.to_json
+    end
+    return {:status => "err", :error => "Can't delete this user"}.to_json
 end
 
 # Check that the list of parameters specified exist.
@@ -1522,6 +1587,7 @@ def insert_news(title,url,text,user_id)
     if !textpost and (id = $r.get("url:"+url))
         return id.to_i
     end
+
     # We can finally insert the news.
     ctime = Time.new.to_i
     news_id = $r.incr("news.count")
@@ -1589,7 +1655,7 @@ end
 # Mark an existing news as removed.
 def del_news(news_id,user_id)
     news = get_news_by_id(news_id)
-    return false if !news or news['user_id'].to_i != user_id.to_i and !user_is_admin?($user)
+    return false if !news or news['user_id'].to_i != user_id.to_i and !user_is_admin?($user) 
     return false if !(news['ctime'].to_i > (Time.now.to_i - NewsEditTime)) and !user_is_admin?($user)
 
     $r.hmset("news:#{news_id}","del",1)
@@ -1825,6 +1891,12 @@ end
 def insert_comment(news_id,user_id,comment_id,parent_id,body)
     news = get_news_by_id(news_id)
     return false if !news
+
+    # check comment doesn't contain blacklisted URL
+    if is_blacklisted_domain(body)
+        return false
+    end
+
     if comment_id == -1
         if parent_id.to_i != -1
             p = Comments.fetch(news_id,parent_id)
@@ -2093,3 +2165,101 @@ def list_items(o)
     aux
 end
 
+###############################################################################
+# Anti Spam tools
+###############################################################################
+
+# returns true if the URL or text contains a blacklisted domain
+def is_blacklisted_domain(url_or_text)
+    domains = $r.smembers("blacklisted_domains")
+    domains.each{|d|
+        if url_or_text.include? d
+            return true
+        end
+    }
+    return false
+end
+
+def get_blacklisted_domain_list
+    $r.smembers("blacklisted_domains")
+end
+
+def add_to_blacklist_domain_list(domain)
+    return false if !user_is_admin?($user)
+    $r.sadd("blacklisted_domains", domain)
+end
+
+# Search for a user, delete its comments and news 
+def delete_user(username)
+    user = get_user_by_username(username)
+    
+    if user
+        # an admin cannot delete himself
+        return false if user_is_admin?(user)
+
+        puts "user found #{user}"
+        # getting news and comments
+        user_comments = get_user_comments(user["id"],0,100000)
+        user_news = get_posted_news(user["id"],0,100000)
+
+        # deleting comments
+        nb_comments = user_comments[1]
+        puts "User has #{nb_comments} comments"
+        if nb_comments > 0
+            # puts "Comments #{user_comments}"
+            puts "Deleting comments"
+            # Call insert_comment(news_id,user_id,comment_id,parent_id,body) and parent_id doesn't matter in that case
+            user_comments[0].each{|c|
+                puts "calling insert_comment(#{c[:news_id]},#{c[:user_id]},#{c[:id]},nil,'')"
+                insert_comment(c[:news_id],c[:user_id],c[:id],nil,'')
+            }
+        end
+
+        # deleting news
+        active_news = user_news[0].select{ |item| item["del"] != "1" }
+        nb_news = active_news.count
+        puts "User has #{nb_news} news"
+        if nb_news > 0
+            # puts "News #{active_news}"
+            puts "Deleting news"
+            # call del_news(news_id,user_id)
+            active_news.each{|n|
+                puts "calling del_news(#{n["id"]}, #{n["user_id"]})"
+                del_news(n["id"], n["user_id"])
+            }
+        end
+
+        # banning user
+        ban_user(username)
+        return true
+    else
+        puts "User not found #{username}"
+        return false
+    end
+end
+
+# ban a user (he won't be able to log in anymore)
+def ban_user(username)
+    user = get_user_by_username(username)
+
+    if user
+        # an admin cannot ban himself
+        return false if user_is_admin?(user)
+
+        rand_number = get_rand
+
+        # DEL auth:auth
+        $r.del("auth:#{user["auth"]}")
+        # HMSET user:NN salt ""
+        # HMSET user:NN password ""
+        # HMSET user:NN auth ""
+        # HMSET user:NN apisecret ""
+        $r.hmset("user:#{user["id"]}","salt","","password",rand_number,"auth","","apisecret","")
+
+        puts "Banned #{user["username"]} successfully"
+        return true
+    else
+        puts "User not found #{username}"
+        return false
+    end
+end
