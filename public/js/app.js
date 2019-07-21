@@ -92,6 +92,29 @@ function submitAddBlacklistedDomain() {
   });
   return false;
 }
+function submitDeleteUser() {
+  var data = {
+    username: $("input[name=username]").val(),
+    apisecret: apisecret
+  };
+  $.ajax({
+    type: "POST",
+    url: "/api/delete_user",
+    data: data,
+    success: function(r) {
+      if (r.status == "ok") {
+        if (r.news_id == -1) {
+          window.location.href = "/";
+        } else {
+          window.location.href = "/admin";
+        }
+      } else {
+        $("#errormsg2").html(r.error);
+      }
+    }
+  });
+  return false;
+}
 
 function update_profile() {
   var data = {

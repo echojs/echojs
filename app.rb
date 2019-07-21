@@ -634,6 +634,20 @@ get '/admin' do
                     $("input[name=submit_blacklist]").click(submitAddBlacklistedDomain);
                 });
             '}+
+            H.h3 {"Delete and ban user accounts (Danger! No way back! Do not use unless the user has been repeatedly posting really bad spam articles!)"}+
+            H.div(:id => "submitform2") {
+                H.form(:name=>"f") {
+                    H.label(:for => "username") {"Username"}+H.br+
+                    H.inputtext(:id => "username", :name => "username", :size => 60, :value => (""))+H.br+                    
+                    H.button(:name => "submit_delete_user", :value => "Submit")
+                }
+            }+
+            H.div(:id => "errormsg2"){}+
+            H.script() {'
+                $(function() {
+                    $("input[name=submit_delete_user]").click(submitDeleteUser);
+                });
+            '}+
             H.h3 {"Developer tools"}+
             H.ul {
                 H.li {
@@ -1025,6 +1039,19 @@ post '/api/blacklist_new_domain' do
         return {:status => "ok", :blacklist_new_domain => params[:blacklist_new_domain]}.to_json
     end
     return {:status => "err", :error => "Can't add this sorry"}.to_json
+end
+
+post '/api/delete_user' do
+    content_type 'application/json'
+    return {:status => "err", :error => "Not authenticated."}.to_json if !$user
+    if not check_api_secret
+        return {:status => "err", :error => "Wrong form secret."}.to_json
+    end
+    return {:status => "err", :error => "Not an admin."}.to_json if !user_is_admin?($user)
+    if delete_user(params[:username])
+        return {:status => "ok", :username => params[:username]}.to_json
+    end
+    return {:status => "err", :error => "Can't delete this user"}.to_json
 end
 
 # Check that the list of parameters specified exist.
@@ -2160,4 +2187,79 @@ end
 def add_to_blacklist_domain_list(domain)
     return false if !user_is_admin?($user)
     $r.sadd("blacklisted_domains", domain)
+end
+
+# Search for a user, delete its comments and news 
+def delete_user(username)
+    user = get_user_by_username(username)
+    
+    if user
+        # an admin cannot delete himself
+        return false if user_is_admin?(user)
+
+        puts "user found #{user}"
+        # getting news and comments
+        user_comments = get_user_comments(user["id"],0,100000)
+        user_news = get_posted_news(user["id"],0,100000)
+
+        # deleting comments
+        nb_comments = user_comments[1]
+        puts "User has #{nb_comments} comments"
+        if nb_comments > 0
+            # puts "Comments #{user_comments}"
+            puts "Deleting comments"
+            # Call insert_comment(news_id,user_id,comment_id,parent_id,body) and parent_id doesn't matter in that case
+            user_comments[0].each{|c|
+                puts "calling insert_comment(#{c[:news_id]},#{c[:user_id]},#{c[:id]},nil,'')"
+                insert_comment(c[:news_id],c[:user_id],c[:id],nil,'')
+            }
+        end
+
+        # deleting news
+        active_news = user_news[0].select{ |item| item["del"] != "1" }
+        nb_news = active_news.count
+        puts "User has #{nb_news} news"
+        if nb_news > 0
+            # puts "News #{active_news}"
+            puts "Deleting news"
+            # call del_news(news_id,user_id)
+            active_news.each{|n|
+                puts "calling del_news(#{n["id"]}, #{n["user_id"]}, true)"
+                del_news(n["id"], n["user_id"], true)
+            }
+        end
+
+        # banning user
+        ban_user(username)
+        return true
+    else
+        puts "User not found #{username}"
+        return false
+    end
+end
+
+# ban a user (he won't be able to log in anymore)
+def ban_user(username)
+    user = get_user_by_username(username)
+
+    if user
+        # an admin cannot ban himself
+        return false if user_is_admin?(user)
+
+        rand_number = get_rand
+
+        # DEL auth:auth
+        $r.del("auth:#{user["auth"]}")
+        # HMSET user:NN salt ""
+        # HMSET user:NN password ""
+        # HMSET user:NN auth ""
+        # HMSET user:NN apisecret ""
+        $r.hmset("user:#{user["id"]}","salt","","password",rand_number,"auth","","apisecret","")
+
+        puts "Banned #{user["username"]} successfully"
+        return true
+    else
+        puts "User not found #{username}"
+        return false
+    end
 end
