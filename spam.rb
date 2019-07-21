@@ -1,0 +1,47 @@
+require_relative 'app'
+
+setup_redis
+
+###############################################################################
+# Anti Spam tools
+###############################################################################
+
+# Search for a user, delete its comments and news 
+def delete_user(username)
+    user = get_user_by_username(username)
+    if user
+        puts "user found #{user}"
+        # getting news and comments
+        user_comments = get_user_comments(user["id"],0,100000)
+        user_news = get_posted_news(user["id"],0,100000)
+
+        # deleting comments
+        nb_comments = user_comments[1]
+        puts "User has #{nb_comments} comments"
+        if nb_comments > 0
+            # puts "Comments #{user_comments}"
+            puts "Deleting comments"
+            # Call insert_comment(news_id,user_id,comment_id,parent_id,body) and parent_id doesn't matter in that case
+            user_comments[0].each{|c|
+                puts "calling insert_comment(#{c[:news_id]},#{c[:user_id]},#{c[:id]},nil,'')"
+                insert_comment(c[:news_id],c[:user_id],c[:id],nil,'')
+            }
+        end
+
+        # deleting news
+        active_news = user_news[0].select{ |item| item["del"] != "1" }
+        nb_news = active_news.count
+        puts "User has #{nb_news} news"
+        if nb_news > 0
+            puts "News #{active_news}"
+            puts "Deleting news"
+            # call del_news(news_id,user_id)
+            active_news.each{|n|
+                puts "calling del_news(#{n["id"]}, #{n["user_id"]}, true)"
+                del_news(n["id"], n["user_id"], true)
+            }
+        end
+    else
+        puts "User not found #{username}"
+    end
+end
