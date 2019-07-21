@@ -620,7 +620,20 @@ get '/admin' do
             H.h3 {"Site stats"}+
             generate_site_stats+
             H.h3 {"Blacklisted domains"}+
-            H.list(domains)+
+            H.list(domains)+H.br+
+            H.div(:id => "submitform") {
+                H.form(:name=>"f") {
+                    H.label(:for => "blacklist_new_domain") {"Add domain to blacklist"}+H.br+
+                    H.inputtext(:id => "blacklist_new_domain", :name => "blacklist_new_domain", :size => 60, :value => (""))+H.br+                    
+                    H.button(:name => "submit_blacklist", :value => "Submit")
+                }
+            }+
+            H.div(:id => "errormsg"){}+
+            H.script() {'
+                $(function() {
+                    $("input[name=submit_blacklist]").click(submitAddBlacklistedDomain);
+                });
+            '}+
             H.h3 {"Developer tools"}+
             H.ul {
                 H.li {
@@ -999,6 +1012,19 @@ get  '/api/getcomments/:news_id' do
         }
     }
     return { :status => "ok", :comments => top_comments }.to_json
+end
+
+post '/api/blacklist_new_domain' do
+    content_type 'application/json'
+    return {:status => "err", :error => "Not authenticated."}.to_json if !$user
+    if not check_api_secret
+        return {:status => "err", :error => "Wrong form secret."}.to_json
+    end
+    return {:status => "err", :error => "Not an admin."}.to_json if !user_is_admin?($user)
+    if add_to_blacklist_domain_list(params[:blacklist_new_domain])
+        return {:status => "ok", :blacklist_new_domain => params[:blacklist_new_domain]}.to_json
+    end
+    return {:status => "err", :error => "Can't add this sorry"}.to_json
 end
 
 # Check that the list of parameters specified exist.
@@ -2128,5 +2154,10 @@ def is_blacklisted_domain(url_or_text)
 end
 
 def get_blacklisted_domain_list
-    $r.smembers "blacklisted_domains"
+    $r.smembers("blacklisted_domains")
+end
+
+def add_to_blacklist_domain_list(domain)
+    return false if !user_is_admin?($user)
+    $r.sadd("blacklisted_domains", domain)
 end
