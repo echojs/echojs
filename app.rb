@@ -865,6 +865,7 @@ post '/api/delnews' do
         }.to_json
     end
     if del_news(params[:news_id],$user["id"])
+        refund_karma_to_downvoters(params[:news_id])
         return {:status => "ok", :news_id => -1}.to_json
     end
     return {:status => "err", :error => "News too old or wrong ID/owner."}.to_json
@@ -1662,6 +1663,14 @@ def del_news(news_id,user_id)
     $r.zrem("news.top",news_id)
     $r.zrem("news.cron",news_id)
     return true
+end
+
+# Reward/refund karma to users downvoting a deleted post
+def refund_karma_to_downvoters(news_id)
+    downvoters = $r.zrange("news.down:#{news_id}", 0, -1)
+    downvoters.each do |user_id|
+        increment_user_karma_by(user_id, DeletedNewsKarmaRefund)
+    end
 end
 
 # Return the host part of the news URL field.
