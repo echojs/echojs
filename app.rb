@@ -613,6 +613,7 @@ end
 get '/admin' do
     redirect "/" if !$user || !user_is_admin?($user)
     domains = get_blacklisted_domain_list
+    blacklisted_ip_addresses = get_blacklisted_ip_addresses
     H.set_title "Admin Section - #{SiteName}"
     H.page {
         H.div(:id => "adminlinks") {
@@ -660,7 +661,9 @@ get '/admin' do
                         "Show annotated home page"
                     }
                 }
-            }
+            }+
+            H.h3 {"Blacklisted ip addresses"}+
+            H.list(blacklisted_ip_addresses)+H.br
         }
     }
 end
@@ -817,8 +820,9 @@ post '/api/submit' do
         end
     end
 
-    # make sure the news is not blacklisted
-    if is_blacklisted_domain(params[:url]) or is_blacklisted_domain(params[:text])
+    # make sure the news and ip address are not blacklisted
+    ip_address = request.ip
+    if is_blacklisted_domain(params[:url]) or is_blacklisted_domain(params[:text]) or is_ip_address_blacklisted?(ip_address)
         return {
                 :status => "err",
                 :error => "Invalid news."
@@ -834,7 +838,7 @@ post '/api/submit' do
             }.to_json
         end
         news_id = insert_news(params[:title],params[:url],params[:text],
-                              $user["id"])
+                              $user["id"],ip_address)
     else
         news_id = edit_news(params[:news_id],params[:title],params[:url],
                             params[:text],$user["id"])
@@ -1576,7 +1580,7 @@ end
 #
 # Return value: the ID of the inserted news, or the ID of the news with
 # the same URL recently added.
-def insert_news(title,url,text,user_id)
+def insert_news(title,url,text,user_id,ip_address)
     # If we don't have an url but a comment, we turn the url into
     # text://....first comment..., so it is just a special case of
     # title+url anyway.
@@ -1602,7 +1606,8 @@ def insert_news(title,url,text,user_id)
         "rank", 0,
         "up", 0,
         "down", 0,
-        "comments", 0)
+        "comments", 0,
+        "ip", ip_address)
     # The posting user virtually upvoted the news posting it
     rank,error = vote_news(news_id,user_id,:up)
     # Add the news to the user submitted news
@@ -2198,6 +2203,23 @@ def add_to_blacklist_domain_list(domain)
     $r.sadd("blacklisted_domains", domain)
 end
 
+def add_ip_address_to_blacklist(ip)
+    return false if !user_is_admin?($user) || ip.nil?
+    $r.set("blacklist:ip:#{ip}",Time.now.strftime("%d/%m/%Y %H:%M"))
+end
+
+def is_ip_address_blacklisted?(ip)
+    return $r.get("blacklist:ip:#{ip}") != nil
+end
+
+def get_blacklisted_ip_addresses
+    keys = $r.keys("blacklist:ip:*")
+    keys.each do |s|
+        s.gsub!('blacklist:ip:', '')
+    end
+    keys
+end
+
 # Search for a user, delete its comments and news 
 def delete_user(username)
     user = get_user_by_username(username)
@@ -2230,9 +2252,16 @@ def delete_user(username)
         puts "User has #{nb_news} news"
         if nb_news > 0
             # puts "News #{active_news}"
-            puts "Deleting news"
+            puts "Deleting news and blacklisted ips if necessary"
             # call del_news(news_id,user_id)
             active_news.each{|n|
+                # blacklisting the ip addresses of the news if found
+                if !(n["ip"].nil?)
+                    puts "Blacklisting ip #{n["ip"]}"
+                    add_ip_address_to_blacklist(n["ip"])
+                end
+
+                # deleting the news
                 puts "calling del_news(#{n["id"]}, #{n["user_id"]})"
                 del_news(n["id"], n["user_id"])
             }
