@@ -3,7 +3,7 @@ SiteName = "Echo JS"
 SiteUrl = "http://www.echojs.com"
 SiteDescription = "JavaScript News"
 
-SiteNews = "Win free O'Reilly books with EchoJS! <a href=\"https://echojs.com/news/35160\">https://echojs.com/news/35160</a>"
+SiteNews = "Site News : Follow Echo JS on Twitter, our official account is : <a href=\"https://twitter.com/echojs\">@echojs</a>"
 
 # Redis config
 RedisURL = "redis://127.0.0.1:6379"
