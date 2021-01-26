@@ -996,7 +996,7 @@ get  '/api/getnews/:sort/:start/:count' do
     getfunc = method((sort == :latest) ? :get_latest_news : :get_top_news)
     news,numitems = getfunc.call(start,count)
     news.each{|n|
-        ['rank','score','user_id'].each{|field| n.delete(field)}
+        ['rank','score','user_id','ip'].each{|field| n.delete(field)}
     }
     return { :status => "ok", :news => news, :count => numitems }.to_json
 end
