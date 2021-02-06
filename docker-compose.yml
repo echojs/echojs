@@ -1,0 +1,68 @@
+################################################################
+#
+# Main application, http://localhost:8111/
+# Redis Commander: http://localhost:8112/
+#
+# Environment Variables you should set when running
+#
+#   MAIL_FROM:     the email address to send system mail from
+#   SMTP_SERVER:   the email server to use
+#   SMTP_USERNAME: the email server username
+#   SMTP_PASSWORD: the email server hostname
+#
+################################################################
+version: "3.8"
+
+services:
+  app:
+    build: .
+    depends_on:
+      - redis
+      - mailrelay
+    links:
+      - redis:redis
+      - mailrelay:mailrelay
+    environment:
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - SITE_URL=${SITE_URL:-http://localhost:8111}
+      - MAIL_RELAY=${MAIL_RELAY:-mailrelay}
+      - MAIL_FROM=%{MAIL_FROM:-robot@echojs.com}
+    ports:
+      - "8111:80"
+  redis:
+    image: "docker.io/bitnami/redis:6.0-debian-10"
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+      - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
+    expose:
+      - "6379"
+    volumes:
+      - "redis_data:/bitnami/redis/data"
+  rediscommander:
+    image: "node:14"
+    ports:
+      - 8112:16379
+    # In case password access is set -  --redis-password=PASSWORD_HERE
+    command: npx redis-commander --port 16379 --redis-host=redis --redis-port=6379
+    depends_on:
+      - redis
+    deploy:
+      resources:
+        limits:
+          cpus: 0.5
+          memory: 128mb
+  mailrelay:
+    # this is not a trusted container, may want to look
+    # for a better one...
+    image: juanluisbaptiste/postfix:latest
+    expose:
+      - "25"
+    environment:
+      - SMTP_SERVER=${SMTP_SERVER:-smtp.mycompany.com}
+      - SMTP_USERNAME=${SMTP_USERNAME:-user@mycompany.com}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-changeme}
+      - SERVER_HOSTNAME=${SERVER_HOSTNAME:-localhost.localdomain}
+
+volumes:
+  redis_data:
+    #driver: local

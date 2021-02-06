@@ -1,5 +1,4 @@
-About
-===
+# About
 
 Lamer news is an implementation of a Reddit / Hacker News style news web site
 written using Ruby, Sinatra, Redis and jQuery.
@@ -14,50 +13,65 @@ everybody to use, fork, and have fun with.
 We believe it is also a good programming example for Redis as a sole DB of a
 nontrivial, real world, web application.
 
-Installation
-===
+# Running Locally
+
+There is a `Dockerfile` and `docker-compose.yml` to make it easier to run the application locally. You should have a recent version of Docker and Docker Compose installed.
+
+```
+docker-compose up
+```
+
+Application Services:
+
+- Application: http://localhost:8111/
+- Redis Commander: http://localhost:8112/
+
+If you wish to exercise email functionality (password recovery), you should set the following environment variables.
+
+- `MAIL_FROM` - the email address used to send mail from.
+- `SMTP_SERVER` - the SMTP server you send email through (your ISP email)
+- `SMTP_USERNAME` - the login user for the relay mail server
+- `SMTP_PASSWORD` - the password for the relay mail server
+
+# Installation
 
 Lamer news is a Ruby/Sinatra/Redis/jQuery application.
 You need to install Redis and Ruby 1.9.2+ with the following gems:
 
-* redis 3.0 or greater
-* hiredis
-* sinatra
-* json
-* ruby-hmac
-* net/smtp
-* openssl (not needed but will speedup the authentication if available).
+- redis 3.0 or greater
+- hiredis
+- sinatra
+- json
+- ruby-hmac
+- net/smtp
+- openssl (not needed but will speedup the authentication if available).
 
 Please note that Redis uses port 6379 by default, so you should either change
 the port number in the configuration file (which is set to use port 10000), or
 configure Redis to use a matching port.
 
-How to contribute
-===
+# How to contribute
 
 I plan to hack on Lamer News in my free time as it is interesting to have
 a non trivial open source example for Redis that is also an useful application.
 However contributions are welcomed. Just make sure to:
 
-* Keep it simple. No complex code, no extreme ruby programming. Ideally non ruby people should understand the code without much efforts.
-* Don't use templates, they suck.
-* If your code slows down significantly the page generation time it will not get merged.
-* Do everything you can to avoid depending on new ruby gems.
-* Open an issue on github before firing your editor to see if there are good chances that your changes will be merged.
-* If you don't want to follow all this rules, forking the code is *encouraged*! The license is two clause BSD, do with this code what you want. Run your site, turn it into a blog, hack it to the extreme consequences. Have fun :)
+- Keep it simple. No complex code, no extreme ruby programming. Ideally non ruby people should understand the code without much efforts.
+- Don't use templates, they suck.
+- If your code slows down significantly the page generation time it will not get merged.
+- Do everything you can to avoid depending on new ruby gems.
+- Open an issue on github before firing your editor to see if there are good chances that your changes will be merged.
+- If you don't want to follow all this rules, forking the code is _encouraged_! The license is two clause BSD, do with this code what you want. Run your site, turn it into a blog, hack it to the extreme consequences. Have fun :)
 
-Web sites using this code
-===
+# Web sites using this code
 
-* http://lamernews.com Programming News.
-* http://hackingitalia.com Programming and Startup News (In Italian).
-* http://www.echojs.com JavaScript News.
+- http://lamernews.com Programming News.
+- http://hackingitalia.com Programming and Startup News (In Italian).
+- http://www.echojs.com JavaScript News.
 
-Data Layout
-===
+# Data Layout
 
-Users
----
+## Users
 
 Every user is represented by the following fields:
 
@@ -91,8 +105,7 @@ the user of the amount of time until posting is permitted.
 Account creation is rate limited by IP address with a key named
 `limit:create_user:<ip_address>` with TTL 15 hours.
 
-Authentication
----
+## Authentication
 
 Users receive an authentication token after a valid pair of username/password
 is received.
@@ -101,8 +114,7 @@ The representation is a simple Redis key in the form:
 
     `auth:<lowercase_token>` -> User ID
 
-News
----
+## News
 
 News are represented as an hash with key name `news:<news id>`.
 The hash has the following fields:
@@ -131,8 +143,7 @@ News is never deleted, but just marked as deleted adding the "del"
 field with value 1 to the news object. However when the post is
 rendered into HTML, it is displayed as [deleted news] text.
 
-News votes
----
+## News votes
 
 Every news has a sorted set with user upvotes and downvotes. The keys are named
 respectively `news.up:<news id>` and `news.down:<news id>`.
@@ -143,22 +154,19 @@ is the user ID of the voting user.
 Posting a news will automatically register an up vote from the user posting
 the news.
 
-Saved news
----
+## Saved news
 
 The system stores a list of upvoted news for every user using a sorted set named
 `user.saved:<user id>`, index by unix time. The value of the sorted set elements
 is the `<news id>`.
 
-Submitted news
----
+## Submitted news
 
 Like saved news every user has an associated sorted set with news he posted.
 The key is called `user.posted:<user id>`. Again the score is the unix time and
 the element is the news id.
 
-Top and Latest news
----
+## Top and Latest news
 
 news.cron is used to generate the "Latest News" page.
 It is a sorted set where the score is the Unix time the news was posted, and the
@@ -168,8 +176,7 @@ news.top is used to generate the "Top News" page.
 It is a sorted set where the score is the "RANK" of the news, and the value is
 the news ID.
 
-Comments
----
+## Comments
 
 Comments are represented using a very memory efficient pattern.
 The system is implemented in the comments.rb file.
@@ -178,8 +185,8 @@ In short every thread (that is a collection of comments for a given
 news) is represented by an hash. Every hash entry represents a
 single comment:
 
-* The hash field is the comment ID.
-* The hash value is a JSON representation of the "comment object".
+- The hash field is the comment ID.
+- The hash value is a JSON representation of the "comment object".
 
 The comment object has many fields, like `ctime` (creation time), `body`,
 `user_id`, and so forth. In order to render all the comments for a thread
@@ -194,8 +201,7 @@ Deleted comments with childs are displayed as [deleted comment] text.
 
 Please check comments.rb for details, it is trivial to read.
 
-User comments
----
+## User comments
 
 All the comments posted by a given user are also taken into a sorted set
 of comments, keyed by creation time. The key name is: `user.comments:<userid>`.
