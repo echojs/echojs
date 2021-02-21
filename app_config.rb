@@ -1,12 +1,12 @@
 # General
 SiteName = "Echo JS"
-SiteUrl = "http://www.echojs.com"
+SiteUrl = ENV["SITE_URL"] || "http://www.echojs.com"
 SiteDescription = "JavaScript News"
 
 SiteNews = "Site News : Follow Echo JS on Twitter, our official account is : <a href=\"https://twitter.com/echojs\">@echojs</a>"
 
 # Redis config
-RedisURL = "redis://127.0.0.1:6379"
+RedisURL = ENV['REDIS_URL'] || "redis://127.0.0.1:6379"
 
 # Security
 PBKDF2Iterations = 1000 # Set this to 5000 to improve security. But it is slow.
@@ -63,5 +63,5 @@ APIMaxNewsCount = 32
 
 # Email service. Set MailRelay to false to disable this functionality
 # (this will prevent users from recovery accounts if the password gets lost).
-MailRelay = "localhost"
-MailFrom = "robot@echojs.com"
+MailRelay = ENV["MAIL_RELAY"] || "localhost"
+MailFrom = ENV["MAIL_FROM"] || "robot@echojs.com"
