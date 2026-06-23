@@ -40,6 +40,15 @@ require_relative 'mail'
 require_relative 'about'
 require 'openssl' if UseOpenSSL
 require 'uri'
+require 'cgi'
+
+# URI.encode was removed in Ruby 3.0. Restore it as an alias to CGI.escape
+# for backward compatibility with the existing call sites.
+module URI
+  def self.encode(str)
+    CGI.escape(str.to_s)
+  end
+end unless URI.respond_to?(:encode)
 
 Version = "0.11.0"
 
