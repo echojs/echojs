@@ -366,34 +366,65 @@ dpkg-reconfigure -plow unattended-upgrades
 
 ## Validation
 
-After completing the setup, verify that everything works:
+Run these checks in order. The first group runs on the VPS and does not require DNS; the last two checks require DNS to be pointed at the new server (see [DNS Configuration](#dns-configuration)).
 
-- `curl -I -H "Host: www.echojs.com" http://VPS_IP_ADDRESS` returns HTTP 301 (redirect to HTTPS, confirming Nginx is serving the site config)
-- `curl -Lk -H "Host: www.echojs.com" https://VPS_IP_ADDRESS/` renders the homepage with the news list over HTTPS (the `-L` follows the redirect, `-k` skips cert validation before DNS is live)
-- User registration, login, and logout work
-- A password-reset email is sent and received
-- `redis-cli dbsize` returns a non-zero key count
-- Nginx access and error logs show no 502 Bad Gateway errors
-- `systemctl status puma` shows the service as `active (running)`
-- `openssl s_client -connect www.echojs.com:443 -servername www.echojs.com` shows a valid SSL certificate
-- `ufw status` shows OpenSSH and Nginx are allowed
+### 1. Services are running (on the VPS)
 
-### Testing without DNS
+```bash
+systemctl status puma         # shows active (running)
+systemctl status redis-server # shows active (running)
+systemctl status nginx       # shows active (running)
+ufw status                    # shows OpenSSH and Nginx Full allowed
+```
 
-To test the full Nginx → Puma stack before DNS is configured, spoof the Host header. Plain HTTP returns a 301 redirect to HTTPS (expected), and the HTTPS request renders the homepage:
+### 2. Redis has data (on the VPS)
+
+```bash
+redis-cli dbsize             # returns a non-zero key count (e.g. 169119)
+```
+
+### 3. Puma serves the app (on the VPS, bypasses Nginx)
+
+```bash
+curl --unix-socket /home/echojs/echojs/tmp/sockets/puma.sock http://www.echojs.com/
+```
+
+Should return the EchoJS homepage HTML (starts with `<!DOCTYPE html>`). If it fails, see [Troubleshooting](#troubleshooting).
+
+### 4. Nginx proxies correctly (from your Mac, no DNS needed)
+
+Spoof the Host header so Nginx routes the request to the EchoJS site config. Plain HTTP returns a 301 redirect to HTTPS (expected), and the HTTPS request renders the homepage:
 
 ```bash
 curl -I -H "Host: www.echojs.com" http://VPS_IP_ADDRESS/
 curl -Lk -H "Host: www.echojs.com" https://VPS_IP_ADDRESS/
 ```
 
-To test Puma directly (bypasses Nginx), point the unix-socket request at the `www.echojs.com` host so the request matches the app's expectations:
+`-L` follows the redirect, `-k` skips cert validation since DNS is not yet pointed.
+
+### 5. App function (from your Mac, using the Host-spoofed HTTPS URL above)
+
+- The homepage renders with the news list
+- User registration, login, and logout work
+- A password-reset email is sent and received (confirms Mailgun API key/domain are correct)
+
+### 6. DNS-dependent checks (after pointing DNS — see [DNS Configuration](#dns-configuration))
 
 ```bash
-curl --unix-socket /home/echojs/echojs/tmp/sockets/puma.sock http://www.echojs.com/
+dig +short www.echojs.com                                        # returns VPS_IP_ADDRESS
+curl -I https://www.echojs.com/                                  # HTTP 200 over the real domain
+openssl s_client -connect www.echojs.com:443 -servername www.echojs.com </dev/null 2>&1 | grep -i verify  # certificate verifies
 ```
 
-Once the IP-based checks pass, proceed to [DNS Configuration](#dns-configuration) to point your domain to this server.
+### Nginx logs
+
+Throughout, watch the Nginx error log for 502 Bad Gateway errors:
+
+```bash
+tail -f /var/log/nginx/echojs.error.log
+```
+
+No 502s should appear once Puma is running and directory permissions are set (see [Application Deployment](#2-application-deployment)).
 
 ## Troubleshooting
 
