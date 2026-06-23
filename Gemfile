@@ -1,7 +1,7 @@
 source 'https://rubygems.org'
 
 gem 'sinatra'
-gem 'redis'
+gem 'redis', '~> 4.8'
 gem 'hiredis'
 gem 'json'
 gem 'ruby-hmac'
