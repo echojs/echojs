@@ -6,6 +6,8 @@ gem 'hiredis'
 gem 'json'
 gem 'ruby-hmac'
 gem 'puma'
+gem 'net-smtp'
+gem 'net-http'
 
 group :development, :test do
   gem 'rake'
