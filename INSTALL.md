@@ -97,6 +97,16 @@ touch tmp/pids/puma.pid
 exit
 ```
 
+Nginx runs as `www-data` and needs to traverse `/home/echojs` to reach the Puma socket and serve static files from `public/`. `adduser` creates the home directory with mode `700`, which blocks Nginx. Grant traversal (execute) permission on each directory in the path and make `public/` readable (run as root):
+
+```bash
+chmod o+x /home/echojs /home/echojs/echojs /home/echojs/echojs/tmp /home/echojs/echojs/tmp/sockets
+chmod -R o+r /home/echojs/echojs/public
+find /home/echojs/echojs/public -type d -exec chmod o+x {} +
+```
+
+`o+x` only allows traversal — it does not let other users list directory contents or read files, so it is safe.
+
 ---
 
 ## 3. Email Setup (Mailgun)
