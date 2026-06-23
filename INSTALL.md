@@ -395,6 +395,26 @@ curl --unix-socket /home/echojs/echojs/tmp/sockets/puma.sock http://www.echojs.c
 
 Once the IP-based checks pass, proceed to [DNS Configuration](#dns-configuration) to point your domain to this server.
 
+## Troubleshooting
+
+### 502 Bad Gateway from Nginx
+
+Nginx returns 502 when it cannot reach the Puma socket. Check the error log:
+
+```bash
+tail -20 /var/log/nginx/echojs.error.log
+```
+
+If you see `connect() to unix:.../puma.sock failed (13: Permission denied)`, Nginx (running as `www-data`) cannot traverse `/home/echojs` to reach the socket. Apply the permission fix from [Application Deployment](#2-application-deployment) (the `chmod o+x` block).
+
+If the error log shows `connect() ... failed (2: No such file or directory)`, Puma is not running or did not bind the socket. Run it in the foreground to see the real error:
+
+```bash
+su - echojs -c "cd ~/echojs && /home/echojs/.local/share/gem/ruby/3.3.0/bin/bundle exec puma -C config/puma.rb -e production"
+```
+
+---
+
 ## 9. DNS Configuration
 
 Point your domain to the new VPS. At your domain registrar or DNS provider, update the A records:
