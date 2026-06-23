@@ -356,8 +356,8 @@ dpkg-reconfigure -plow unattended-upgrades
 
 After completing the setup, verify that everything works:
 
-- `curl -I http://VPS_IP_ADDRESS` returns HTTP 200 (site is running on the raw IP)
-- The homepage renders with the news list at `http://VPS_IP_ADDRESS`
+- `curl -I -H "Host: www.echojs.com" http://VPS_IP_ADDRESS` returns HTTP 301 (redirect to HTTPS, confirming Nginx is serving the site config)
+- `curl -Lk -H "Host: www.echojs.com" https://VPS_IP_ADDRESS/` renders the homepage with the news list over HTTPS (the `-L` follows the redirect, `-k` skips cert validation before DNS is live)
 - User registration, login, and logout work
 - A password-reset email is sent and received
 - `redis-cli dbsize` returns a non-zero key count
@@ -368,16 +368,17 @@ After completing the setup, verify that everything works:
 
 ### Testing without DNS
 
-To test the full Nginx → Puma stack before DNS is configured, spoof the Host header:
+To test the full Nginx → Puma stack before DNS is configured, spoof the Host header. Plain HTTP returns a 301 redirect to HTTPS (expected), and the HTTPS request renders the homepage:
 
 ```bash
-curl -H "Host: www.echojs.com" http://VPS_IP_ADDRESS/
+curl -I -H "Host: www.echojs.com" http://VPS_IP_ADDRESS/
+curl -Lk -H "Host: www.echojs.com" https://VPS_IP_ADDRESS/
 ```
 
-To test Puma directly (bypasses Nginx):
+To test Puma directly (bypasses Nginx), point the unix-socket request at the `www.echojs.com` host so the request matches the app's expectations:
 
 ```bash
-curl --unix-socket /home/echojs/echojs/tmp/sockets/puma.sock http://localhost/
+curl --unix-socket /home/echojs/echojs/tmp/sockets/puma.sock http://www.echojs.com/
 ```
 
 Once the IP-based checks pass, proceed to [DNS Configuration](#dns-configuration) to point your domain to this server.

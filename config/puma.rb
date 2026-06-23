@@ -3,7 +3,7 @@ dir = "/home/echojs/echojs/"
 workers 2
 threads 1, 1
 
-preload_app true
+preload_app!
 
 bind "unix://#{dir}tmp/sockets/puma.sock"
 
