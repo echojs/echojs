@@ -76,16 +76,18 @@ cd echojs
 Install Ruby dependencies. If `gem` installs to your user directory and complains about PATH, add the gem bin directory to your PATH:
 
 ```bash
-gem install bundler puma
+gem install bundler
 export PATH="$PATH:/home/echojs/.local/share/gem/ruby/3.3.0/bin"
 ```
 
-Then configure Bundler to install gems inside the project directory and install:
+Then configure Bundler to install gems inside the project directory and install (this installs puma and all app gems like sinatra, redis, and hiredis from the Gemfile):
 
 ```bash
 bundle config set --local path 'vendor/bundle'
 bundle install
 ```
+
+The Puma systemd service (created in the next section) runs `bundle exec puma`, so all vendored gems are on the load path automatically.
 
 Create required directories:
 
@@ -144,7 +146,7 @@ Environment=REDIS_URL=redis://127.0.0.1:6379
 Environment=MAILGUN_API_KEY=YOUR_MAILGUN_API_KEY
 Environment=MAILGUN_DOMAIN=YOUR_MAILGUN_DOMAIN
 Environment=MAIL_FROM=robot@echojs.com
-ExecStart=/home/echojs/.local/share/gem/ruby/3.3.0/bin/puma -C config/puma.rb -e production
+ExecStart=/home/echojs/.local/share/gem/ruby/3.3.0/bin/bundle exec puma -C config/puma.rb -e production
 PIDFile=/home/echojs/echojs/tmp/pids/puma.pid
 ExecStop=/bin/kill -QUIT $MAINPID
 ExecReload=/bin/kill -HUP $MAINPID

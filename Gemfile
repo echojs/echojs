@@ -5,6 +5,7 @@ gem 'redis'
 gem 'hiredis'
 gem 'json'
 gem 'ruby-hmac'
+gem 'puma'
 
 group :development, :test do
   gem 'rake'
