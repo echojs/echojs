@@ -160,6 +160,10 @@ ExecStart=/home/echojs/.local/share/gem/ruby/3.3.0/bin/bundle exec puma -C confi
 PIDFile=/home/echojs/echojs/tmp/pids/puma.pid
 ExecStop=/bin/kill -QUIT $MAINPID
 ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5s
+StartLimitBurst=5
+StartLimitIntervalSec=60
 
 [Install]
 WantedBy=multi-user.target
@@ -472,3 +476,4 @@ It should return your new VPS IP address.
 - **Mailgun API**: When `MAILGUN_API_KEY` and `MAILGUN_DOMAIN` are set, EchoJS uses the Mailgun HTTP API via `mail.rb`. When they are unset, it falls back to SMTP using `MAIL_RELAY`. Both paths are handled in the committed code — no manual patching required.
 - **Certificate expiration**: Track certificate expiry and renew manually or via certbot before the certificates expire. For manual renewal, upload the new certificate files and reload Nginx.
 - **Puma workers**: The configuration uses 2 workers with 1 thread each to match the previous Unicorn process model and avoid Redis thread-safety issues. Puma runs as `Type=simple` under systemd (no daemonization).
+- **Auto-restart**: The service has `Restart=on-failure` with a 5s delay and a burst limit of 5 restarts per 60s. If Puma crashes, systemd restarts it automatically. A manual `systemctl stop puma` still stops it cleanly (no restart). If it keeps crashing, systemd stops trying after 5 failures — check the logs and run Puma in the foreground to diagnose (see [Troubleshooting](#troubleshooting)).
