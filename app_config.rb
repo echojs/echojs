@@ -65,3 +65,5 @@ APIMaxNewsCount = 32
 # (this will prevent users from recovery accounts if the password gets lost).
 MailRelay = ENV["MAIL_RELAY"] || "localhost"
 MailFrom = ENV["MAIL_FROM"] || "robot@echojs.com"
+MailgunApiKey = ENV["MAILGUN_API_KEY"]
+MailgunDomain = ENV["MAILGUN_DOMAIN"]
