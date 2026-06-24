@@ -362,10 +362,10 @@ The IAM user only needs `s3:PutObject` on the bucket (not `s3:ListBucket`). The 
 Add the cron job (the `BGSAVE` ensures the on-disk `dump.rdb` is current before tarring it):
 
 ```bash
-(crontab -l ; echo "0 2 * * * /usr/bin/redis-cli BGSAVE && sleep 2 && tar cfz /home/echojs/echojs-\$(date +\%Y\%m\%d-\%H\%M).tar.gz /var/lib/redis/dump.rdb && aws s3 cp /home/echojs/echojs-\$(date +\%Y\%m\%d-\%H\%M).tar.gz s3://echojs-backup/echojs-\$(date +\%Y\%m\%d-\%H\%M).tar.gz --storage-class ONEZONE_IA && ls -t /home/echojs/echojs-* | tail -n +3 | xargs rm -f") | crontab -
+(crontab -l ; echo "0 * * * * /usr/bin/redis-cli BGSAVE && sleep 2 && tar cfz /home/echojs/echojs-\$(date +\%Y\%m\%d-\%H\%M).tar.gz /var/lib/redis/dump.rdb && aws s3 cp /home/echojs/echojs-\$(date +\%Y\%m\%d-\%H\%M).tar.gz s3://echojs-backup/echojs-\$(date +\%Y\%m\%d-\%H\%M).tar.gz --storage-class ONEZONE_IA && ls -t /home/echojs/echojs-* | tail -n +3 | xargs rm -f") | crontab -
 ```
 
-This runs at 02:00 nightly: triggers a Redis background save, waits briefly, tars the dump, uploads it to S3 under a timestamped object key, and keeps the 2 most recent local tarballs while removing older ones to prevent disk saturation.
+This runs hourly at minute 0: triggers a Redis background save, waits briefly, tars the dump (~12 MB gzipped), uploads it to S3 under a timestamped object key, and keeps the 2 most recent local tarballs while removing older ones to prevent disk saturation. At ~12 MB per backup this is roughly 288 MB/day in S3 — consider adding an S3 lifecycle rule to expire old objects (e.g. after 30 days) to keep costs bounded.
 
 **Verify it works** by running the command body manually (without the cron wrapper) and checking that the upload succeeds and no tarballs are left behind:
 
