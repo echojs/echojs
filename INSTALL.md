@@ -349,14 +349,29 @@ Create the S3 bucket beforehand (e.g. `echojs-backup`) and ensure the IAM user h
 
 ### Automated Redis Backups
 
-Create a nightly backup of the Redis database, compress it, upload to S3, and keep only the most recent local copy:
+Create a nightly backup of the Redis database, compress it, upload to S3, and keep only the most recent local copy.
+
+First create the backups directory:
 
 ```bash
 mkdir -p /home/echojs/backups
-(crontab -l ; echo "0 2 * * * tar cfz /home/echojs/echojs-\$(date +\%Y\%m\%d-\%H\%M).tar.gz /var/lib/redis/dump.rdb && aws s3 cp \$(ls -t /home/echojs/echojs-* | head -1) s3://echojs-backup --storage-class ONEZONE_IA && ls -t /home/echojs/echojs-* | tail -n +3 | xargs rm -f") | crontab -
 ```
 
-This creates a timestamped tarball, uploads the newest one to S3, and keeps the 2 most recent local copies while removing older ones to prevent disk saturation.
+The IAM user only needs `s3:PutObject` on the bucket (not `s3:ListBucket`). The upload must target a full object key (e.g. `s3://echojs-backup/echojs-YYYYMMDD-HHMM.tar.gz`), not the bare bucket path `s3://echojs-backup` — uploading to the bare bucket path triggers a `ListBucket` call that requires extra permissions and fails silently.
+
+Add the cron job (the `BGSAVE` ensures the on-disk `dump.rdb` is current before tarring it):
+
+```bash
+(crontab -l ; echo "0 2 * * * /usr/bin/redis-cli BGSAVE && sleep 2 && tar cfz /home/echojs/echojs-\$(date +\%Y\%m\%d-\%H\%M).tar.gz /var/lib/redis/dump.rdb && aws s3 cp /home/echojs/echojs-\$(date +\%Y\%m\%d-\%H\%M).tar.gz s3://echojs-backup/echojs-\$(date +\%Y\%m\%d-\%H\%M).tar.gz --storage-class ONEZONE_IA && ls -t /home/echojs/echojs-* | tail -n +3 | xargs rm -f") | crontab -
+```
+
+This runs at 02:00 nightly: triggers a Redis background save, waits briefly, tars the dump, uploads it to S3 under a timestamped object key, and keeps the 2 most recent local tarballs while removing older ones to prevent disk saturation.
+
+**Verify it works** by running the command body manually (without the cron wrapper) and checking that the upload succeeds and no tarballs are left behind:
+
+```bash
+/usr/bin/redis-cli BGSAVE && sleep 2 && tar cfz /home/echojs/echojs-test.tar.gz /var/lib/redis/dump.rdb && aws s3 cp /home/echojs/echojs-test.tar.gz s3://echojs-backup/echojs-test.tar.gz --storage-class ONEZONE_IA && rm -f /home/echojs/echojs-test.tar.gz
+```
 
 ### Security Updates
 
